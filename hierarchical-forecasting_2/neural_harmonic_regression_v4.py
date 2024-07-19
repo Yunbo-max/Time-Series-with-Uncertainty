@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+# @Author: Yunbo
+# @Date:   2024-05-14 17:37:10
+# @Last Modified by:   Yunbo
+# @Last Modified time: 2024-07-19 18:26:53
 ## ADD TREND TERMS (MORE)
 
 import pandas as pd
