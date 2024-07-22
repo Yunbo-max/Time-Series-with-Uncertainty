@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+# @Author: Yunbo
+# @Date:   2024-05-08 09:21:42
+# @Last Modified by:   Yunbo
+# @Last Modified time: 2024-07-22 11:28:11
 import pandas as pd
 import statsmodels
 from sklearn.model_selection import train_test_split
