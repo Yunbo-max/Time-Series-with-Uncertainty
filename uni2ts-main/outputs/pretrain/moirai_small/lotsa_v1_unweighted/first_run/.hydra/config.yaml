@@ -1,0 +1,112 @@
+model:
+  _target_: uni2ts.model.moirai.MoiraiPretrain
+  module_kwargs:
+    _target_: builtins.dict
+    distr_output:
+      _target_: uni2ts.distribution.MixtureOutput
+      components:
+      - _target_: uni2ts.distribution.StudentTOutput
+      - _target_: uni2ts.distribution.NormalFixedScaleOutput
+      - _target_: uni2ts.distribution.NegativeBinomialOutput
+      - _target_: uni2ts.distribution.LogNormalOutput
+    d_model: 384
+    num_layers: 6
+    patch_sizes: ${as_tuple:[8, 16, 32, 64, 128]}
+    max_seq_len: 512
+    attn_dropout_p: 0.0
+    dropout_p: 0.0
+    scaling: true
+  min_patches: 2
+  min_mask_ratio: 0.15
+  max_mask_ratio: 0.5
+  max_dim: 128
+  loss_func:
+    _target_: uni2ts.loss.packed.PackedNLLLoss
+  lr: 0.001
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.98
+  num_training_steps: ${mul:${trainer.max_epochs},${train_dataloader.num_batches_per_epoch}}
+  num_warmup_steps: 10000
+data:
+  _target_: uni2ts.data.builder.ConcatDatasetBuilder
+  _args_:
+  - _target_: uni2ts.data.builder.lotsa_v1.Buildings900KDatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.BuildingsBenchDatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.CloudOpsTSFDatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.CMIP6DatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.ERA5DatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.GluonTSDatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.LargeSTDatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.LibCityDatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.OthersLOTSADatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.ProEnFoDatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+  - _target_: uni2ts.data.builder.lotsa_v1.SubseasonalDatasetBuilder
+    datasets: ${cls_getattr:${._target_},dataset_list}
+run_name: first_run
+seed: 0
+tf32: true
+compile: false
+ckpt_path: null
+trainer:
+  _target_: lightning.Trainer
+  accelerator: auto
+  strategy: auto
+  devices: auto
+  num_nodes: 1
+  precision: 32
+  logger:
+    _target_: lightning.pytorch.loggers.TensorBoardLogger
+    save_dir: ${hydra:runtime.output_dir}
+    name: logs
+  callbacks:
+  - _target_: lightning.pytorch.callbacks.LearningRateMonitor
+    logging_interval: epoch
+  - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: ${hydra:runtime.output_dir}/checkpoints
+    filename: last
+    monitor: epoch
+    mode: max
+    save_top_k: 1
+    every_n_epochs: 10
+  - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: ${hydra:runtime.output_dir}/checkpoints
+    monitor: epoch
+    save_weights_only: true
+    mode: max
+    save_top_k: -1
+    every_n_epochs: ${floordiv:${trainer.max_epochs},10}
+  max_epochs: 1000
+  enable_progress_bar: true
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: norm
+train_dataloader:
+  _target_: uni2ts.data.loader.DataLoader
+  batch_size: 128
+  batch_size_factor: 2.0
+  cycle: true
+  num_batches_per_epoch: 100
+  shuffle: true
+  num_workers: 11
+  collate_fn:
+    _target_: uni2ts.data.loader.PackCollate
+    max_length: ${model.module_kwargs.max_seq_len}
+    seq_fields: ${cls_getattr:${model._target_},seq_fields}
+    pad_func_map: ${cls_getattr:${model._target_},pad_func_map}
+  pin_memory: true
+  drop_last: true
+  fill_last: false
+  worker_init_fn: null
+  prefetch_factor: 2
+  persistent_workers: true
